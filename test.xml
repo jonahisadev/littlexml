@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<car type="coupe">This is a description</car>
+<struct name="Person">
+    <field name="name" type="string" />
+    <field name="age" type="int" />
+</struct>

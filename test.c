@@ -4,10 +4,13 @@ int main()
 {
     XMLDocument doc;
     if (XMLDocument_load(&doc, "test.xml")) {
-        printf("XML Document (version=%s, encoding=%s)\n", doc.version, doc.encoding);
+        XMLNode* str = XMLNode_child(doc.root, 0);
+        printf("Struct: %s\n", XMLNode_attr_val(str, "name"));
 
-        XMLNode* main_node = XMLNode_child(doc.root, 0);
-        printf("Car (%s)\n", main_node->attributes.data[0].value);
+        for (int i = 0; i < str->children.size; i++) {
+            XMLNode* field = XMLNode_child(str, i);
+            printf("  %s (%s)\n", XMLNode_attr_val(field, "name"), XMLNode_attr_val(field, "type"));
+        }
 
         XMLDocument_free(&doc);
     }
