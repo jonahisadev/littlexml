@@ -4,11 +4,10 @@ int main()
 {
     XMLDocument doc;
     if (XMLDocument_load(&doc, "test.xml")) {
-        XMLNode* main_node = XMLNode_child(doc.root, 0);
-        printf("%d children\n", main_node->children.size);
+        printf("XML Document (version=%s, encoding=%s)\n", doc.version, doc.encoding);
 
-        XMLNode* another_node = XMLNode_child(doc.root, 1);
-        printf("%s\n", another_node->inner_text);
+        XMLNode* main_node = XMLNode_child(doc.root, 0);
+        printf("Car (%s)\n", main_node->attributes.data[0].value);
 
         XMLDocument_free(&doc);
     }

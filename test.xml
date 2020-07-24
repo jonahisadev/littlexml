@@ -1,7 +1,2 @@
-<main>
-    <inner>
-        <more>I'm 14 and this is deep</more>
-    </inner>
-    <another>This is another node</another>
-</main>
-<another>This should work too</another>
+<?xml version="1.0" encoding="UTF-8" ?>
+<car type="coupe">This is a description</car>

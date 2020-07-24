@@ -16,6 +16,22 @@
 //  Definitions
 //
 
+int ends_with(const char* haystack, const char* needle)
+{
+    int h_len = strlen(haystack);
+    int n_len = strlen(needle);
+
+    if (h_len < n_len)
+        return FALSE;
+
+    for (int i = 0; i < n_len; i++) {
+        if (haystack[h_len - n_len + i] != needle[i])
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
 struct _XMLAttribute
 {
     char* key;
@@ -60,10 +76,13 @@ typedef struct _XMLNode XMLNode;
 XMLNode* XMLNode_new(XMLNode* parent);
 void XMLNode_free(XMLNode* node);
 XMLNode* XMLNode_child(XMLNode* parent, int index);
+char* XMLNode_attr_val(XMLNode* node, char* key);
 
 struct _XMLDocument
 {
     XMLNode* root;
+    char* version;
+    char* encoding;
 };
 typedef struct _XMLDocument XMLDocument;
 
@@ -143,6 +162,69 @@ XMLNode* XMLNode_child(XMLNode* parent, int index)
     return parent->children.data[index];
 }
 
+char* XMLNode_attr_val(XMLNode* node, char* key)
+{
+    for (int i = 0; i < node->attributes.size; i++) {
+        XMLAttribute attr = node->attributes.data[i];
+        if (!strcmp(attr.key, key))
+            return attr.value;
+    }
+    return NULL;
+}
+
+static void parse_attrs(char* buf, int* i, char* lex, int* lexi, XMLNode* curr_node)
+{
+    XMLAttribute curr_attr = {0, 0};
+    while (buf[*i] != '>') {
+        lex[(*lexi)++] = buf[(*i)++];
+
+        // Tag name
+        if (buf[*i] == ' ' && !curr_node->tag) {
+            lex[*lexi] = '\0';
+            curr_node->tag = strdup(lex);
+            *lexi = 0;
+            (*i)++;
+            continue;
+        }
+
+        // Usually ignore spaces
+        if (lex[*lexi-1] == ' ') {
+            (*lexi)--;
+            continue;
+        }
+
+        // Attribute key
+        if (buf[*i] == '=') {
+            lex[*lexi] = '\0';
+            curr_attr.key = strdup(lex);
+            *lexi = 0;
+            continue;
+        }
+
+        // Attribute value
+        if (buf[*i] == '"') {
+            if (!curr_attr.key) {
+                fprintf(stderr, "Value has no key\n");
+                return;
+            }
+
+            *lexi = 0;
+            (*i)++;
+
+            while (buf[*i] != '"')
+                lex[(*lexi)++] = buf[(*i)++];
+            lex[*lexi] = '\0';
+            curr_attr.value = strdup(lex);
+            XMLAttributeList_add(&curr_node->attributes, &curr_attr);
+            curr_attr.key = NULL;
+            curr_attr.value = NULL;
+            *lexi = 0;
+            (*i)++;
+            continue;
+        }
+    }
+}
+
 int XMLDocument_load(XMLDocument* doc, const char* path)
 {
     FILE* file = fopen(path, "r");
@@ -197,7 +279,7 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
                 }
 
                 if (strcmp(curr_node->tag, lex)) {
-                    fprintf(stderr, "Mismatched tags (%s != %s)", curr_node->tag, lex);
+                    fprintf(stderr, "Mismatched tags (%s != %s)\n", curr_node->tag, lex);
                     return FALSE;
                 }
 
@@ -206,60 +288,47 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
                 continue;
             }
 
+            // Special nodes
+            if (buf[i + 1] == '!') {
+                while (buf[i] != ' ' && buf[i] != '>')
+                    lex[lexi++] = buf[i++];
+                lex[lexi] = '\0';
+
+                // Comments
+                if (!strcmp(lex, "<!--")) {
+                    lex[lexi] = '\0';
+                    while (!ends_with(lex, "-->")) {
+                        lex[lexi++] = buf[i++];
+                        lex[lexi] = '\0';
+                    }
+                    continue;
+                }
+            }
+
+            // Declaration tags
+            if (buf[i + 1] == '?') {
+                while (buf[i] != ' ' && buf[i] != '>')
+                    lex[lexi++] = buf[i++];
+                lex[lexi] = '\0';
+
+                // This is the XML declaration
+                if (!strcmp(lex, "<?xml")) {
+                    lexi = 0;
+                    XMLNode* desc = XMLNode_new(NULL);
+                    parse_attrs(buf, &i, lex, &lexi, desc);
+
+                    doc->version = XMLNode_attr_val(desc, "version");
+                    doc->encoding = XMLNode_attr_val(desc, "encoding");
+                    continue;
+                }
+            }
+
             // Set current node
             curr_node = XMLNode_new(curr_node);
 
             // Start tag
             i++;
-            XMLAttribute curr_attr = {0, 0};
-            while (buf[i] != '>') {
-                lex[lexi++] = buf[i++];
-
-                // Tag name
-                if (buf[i] == ' ' && !curr_node->tag) {
-                    lex[lexi] = '\0';
-                    curr_node->tag = strdup(lex);
-                    lexi = 0;
-                    i++;
-                    continue;
-                }
-
-                // Usually ignore spaces
-                if (lex[lexi-1] == ' ') {
-                    lexi--;
-                    continue;
-                }
-
-                // Attribute key
-                if (buf[i] == '=') {
-                    lex[lexi] = '\0';
-                    curr_attr.key = strdup(lex);
-                    lexi = 0;
-                    continue;
-                }
-
-                // Attribute value
-                if (buf[i] == '"') {
-                    if (!curr_attr.key) {
-                        fprintf(stderr, "Value has no key\n");
-                        return FALSE;
-                    }
-
-                    lexi = 0;
-                    i++;
-
-                    while (buf[i] != '"')
-                        lex[lexi++] = buf[i++];
-                    lex[lexi] = '\0';
-                    curr_attr.value = strdup(lex);
-                    XMLAttributeList_add(&curr_node->attributes, &curr_attr);
-                    curr_attr.key = NULL;
-                    curr_attr.value = NULL;
-                    lexi = 0;
-                    i++;
-                    continue;
-                }
-            }
+            parse_attrs(buf, &i, lex, &lexi, curr_node);
 
             // Set tag name if none
             lex[lexi] = '\0';
