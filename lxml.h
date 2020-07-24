@@ -91,6 +91,7 @@ struct _XMLDocument
 typedef struct _XMLDocument XMLDocument;
 
 int XMLDocument_load(XMLDocument* doc, const char* path);
+int XMLDocument_write(XMLDocument* doc, const char* path, int indent);
 void XMLDocument_free(XMLDocument* doc);
 
 //
@@ -404,6 +405,56 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
     }
 
     return TRUE;
+}
+
+static void node_out(FILE* file, XMLNode* node, int indent, int times)
+{
+    for (int i = 0; i < node->children.size; i++) {
+        XMLNode* child = node->children.data[i];
+
+        if (times > 0)
+            fprintf(file, "%0*s", indent * times, " ");
+        
+        fprintf(file, "<%s", child->tag);
+        for (int i = 0; i < child->attributes.size; i++) {
+            XMLAttribute attr = child->attributes.data[i];
+            if (!attr.value || !strcmp(attr.value, ""))
+                continue;
+            fprintf(file, " %s=\"%s\"", attr.key, attr.value);
+        }
+
+        if (child->children.size == 0 && !child->inner_text)
+            fprintf(file, " />\n");
+        else {
+            fprintf(file, ">");
+            if (child->children.size == 0)
+                fprintf(file, "%s</%s>\n", child->inner_text, child->tag);
+            else {
+                fprintf(file, "\n");
+                node_out(file, child, indent, times + 1);
+                if (times > 0)
+                    fprintf(file, "%0*s", indent * times, " ");
+                fprintf(file, "</%s>\n", child->tag);
+            }
+        }
+    }
+}
+
+int XMLDocument_write(XMLDocument* doc, const char* path, int indent)
+{
+    FILE* file = fopen(path, "w");
+    if (!file) {
+        fprintf(stderr, "Could not open file '%s'\n", path);
+        return FALSE;
+    }
+
+    fprintf(
+        file, "<?xml version=\"%s\" encoding=\"%s\" ?>\n",
+        (doc->version) ? doc->version : "1.0",
+        (doc->encoding) ? doc->encoding : "UTF-8"
+    );
+    node_out(file, doc->root, indent, 0);
+    fclose(file);
 }
 
 void XMLDocument_free(XMLDocument* doc)
