@@ -407,8 +407,8 @@ static void node_out(FILE* file, XMLNode* node, int indent, int times)
         XMLNode* child = node->children.data[i];
 
         if (times > 0)
-            fprintf(file, "%0*s", indent * times, " ");
-        
+            fprintf(file, "%*s", indent * times, " ");
+
         fprintf(file, "<%s", child->tag);
         for (int i = 0; i < child->attributes.size; i++) {
             XMLAttribute attr = child->attributes.data[i];
@@ -427,7 +427,7 @@ static void node_out(FILE* file, XMLNode* node, int indent, int times)
                 fprintf(file, "\n");
                 node_out(file, child, indent, times + 1);
                 if (times > 0)
-                    fprintf(file, "%0*s", indent * times, " ");
+                    fprintf(file, "%*s", indent * times, " ");
                 fprintf(file, "</%s>\n", child->tag);
             }
         }
