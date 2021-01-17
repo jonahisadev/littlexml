@@ -4,13 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifndef TRUE
-    #define TRUE 1
-#endif
-#ifndef FALSE
-    #define FALSE 0
-#endif
+#include <stdbool.h>
 
 //
 //  Definitions
@@ -22,14 +16,14 @@ int ends_with(const char* haystack, const char* needle)
     int n_len = strlen(needle);
 
     if (h_len < n_len)
-        return FALSE;
+        return false;
 
     for (int i = 0; i < n_len; i++) {
         if (haystack[h_len - n_len + i] != needle[i])
-            return FALSE;
+            return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 struct _XMLAttribute
@@ -286,7 +280,7 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
     FILE* file = fopen(path, "r");
     if (!file) {
         fprintf(stderr, "Could not load file from '%s'\n", path);
-        return FALSE;
+        return false;
     }
 
     fseek(file, 0, SEEK_END);
@@ -315,7 +309,7 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
             if (lexi > 0) {
                 if (!curr_node) {
                     fprintf(stderr, "Text outside of document\n");
-                    return FALSE;
+                    return false;
                 }
 
                 curr_node->inner_text = strdup(lex);
@@ -331,12 +325,12 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
 
                 if (!curr_node) {
                     fprintf(stderr, "Already at the root\n");
-                    return FALSE;
+                    return false;
                 }
 
                 if (strcmp(curr_node->tag, lex)) {
                     fprintf(stderr, "Mismatched tags (%s != %s)\n", curr_node->tag, lex);
-                    return FALSE;
+                    return false;
                 }
 
                 curr_node = curr_node->parent;
@@ -404,7 +398,7 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
         }
     }
 
-    return TRUE;
+    return true;
 }
 
 static void node_out(FILE* file, XMLNode* node, int indent, int times)
@@ -445,7 +439,7 @@ int XMLDocument_write(XMLDocument* doc, const char* path, int indent)
     FILE* file = fopen(path, "w");
     if (!file) {
         fprintf(stderr, "Could not open file '%s'\n", path);
-        return FALSE;
+        return false;
     }
 
     fprintf(
@@ -455,6 +449,8 @@ int XMLDocument_write(XMLDocument* doc, const char* path, int indent)
     );
     node_out(file, doc->root, indent, 0);
     fclose(file);
+
+    return true;
 }
 
 void XMLDocument_free(XMLDocument* doc)
