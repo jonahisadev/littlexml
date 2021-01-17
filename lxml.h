@@ -279,7 +279,7 @@ int XMLDocument_load(XMLDocument* doc, const char* path)
 {
     FILE* file = fopen(path, "r");
     if (!file) {
-        fprintf(stderr, "Could not load file from '%s'\n", path);
+        perror("Could not load XML document");
         return false;
     }
 
@@ -438,7 +438,7 @@ int XMLDocument_write(XMLDocument* doc, const char* path, int indent)
 {
     FILE* file = fopen(path, "w");
     if (!file) {
-        fprintf(stderr, "Could not open file '%s'\n", path);
+        perror("Could not open XML output file");
         return false;
     }
 
